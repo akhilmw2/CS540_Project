@@ -3,6 +3,8 @@ package com.cs540.code_service.service;
 import com.cs540.code_service.model.*;
 import com.cs540.code_service.repository.SubmissionRepository;
 import com.cs540.code_service.repository.TestCaseRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -56,26 +58,15 @@ public class CodeExecutionService {
             return executionResult.getStatus();
         }
 
-        return normalizeOutput(executionResult.getOutput()).equals(normalizeOutput(testCase.getExpectedOutput()))
-                ? "PASSED" : "FAILED";
+        // Convert both outputs to String and normalize them before comparison
+        String actualOutput = normalizeOutput(executionResult.getOutput());
+        String expectedOutput = normalizeOutput(convertObjectToString(testCase.getExpectedOutput()));
+
+        return actualOutput.equals(expectedOutput) ? "PASSED" : "FAILED";
     }
 
     private String normalizeOutput(String output) {
         return output != null ? output.trim().replaceAll("\\r\\n", "\n") : "";
-    }
-
-    private void saveSubmission(SubmissionRequest request, SubmissionResult result) {
-        Submission submission = new Submission();
-        submission.setUserId(request.getUserId());
-        submission.setProblemId(request.getProblemId());
-        submission.setCode(request.getCode());
-        submission.setLanguage(request.getLanguage());
-        submission.setTimestamp(new Date());
-        submission.setScore(result.getScore());
-        submission.setStatus(result.getOverallStatus());
-        submission.setExecutionResults(result.getTestCaseResults());
-
-        submissionRepository.save(submission);
     }
 
     public ExecutionResult executeCode(ExecutionRequest request) {
@@ -157,7 +148,23 @@ public class CodeExecutionService {
         ExecutionRequest executionRequest = new ExecutionRequest();
         executionRequest.setCode(request.getCode());
         executionRequest.setLanguage(request.getLanguage());
-        executionRequest.setInput(testCase.getInput());
+
+        // Convert input to String
+        Object testCaseInput = testCase.getInput();
+        String inputString = "";
+        if (testCaseInput != null) {
+            if (testCaseInput instanceof String) {
+                inputString = (String) testCaseInput;
+            } else {
+                try {
+                    inputString = objectMapper.writeValueAsString(testCaseInput);
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException("Failed to serialize test case input", e);
+                }
+            }
+        }
+        executionRequest.setInput(inputString);
+
         executionRequest.setTimeoutSeconds(testCase.getTimeoutSeconds());
         executionRequest.setUserId(request.getUserId());
         executionRequest.setProblemId(request.getProblemId());
@@ -167,9 +174,13 @@ public class CodeExecutionService {
     private TestCaseResult createTestCaseResult(TestCase testCase, ExecutionResult executionResult) {
         boolean passed = isTestCasePassed(testCase, executionResult);
 
+        // Convert input and expectedOutput to String
+        String inputString = convertObjectToString(testCase.getInput());
+        String expectedOutputString = convertObjectToString(testCase.getExpectedOutput());
+
         return new TestCaseResult(
-                testCase.getInput(),
-                testCase.getExpectedOutput(),
+                inputString,
+                expectedOutputString,
                 executionResult.getOutput(),
                 passed ? "PASSED" : "FAILED",
                 executionResult.getExecutionTime(),
@@ -179,10 +190,41 @@ public class CodeExecutionService {
         );
     }
 
+    private String convertObjectToString(Object obj) {
+        if (obj == null) return "";
+        if (obj instanceof String) return (String) obj;
+        try {
+            return objectMapper.writeValueAsString(obj);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to serialize object", e);
+        }
+    }
+
+    // Add this at class level
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    // Modify the isTestCasePassed method
     private boolean isTestCasePassed(TestCase testCase, ExecutionResult executionResult) {
-        return "SUCCESS".equals(executionResult.getStatus()) &&
-                normalizeExecutionOutput(executionResult.getOutput())
-                        .equals(normalizeTestCaseOutput(testCase.getExpectedOutput()));
+        if (!"SUCCESS".equals(executionResult.getStatus())) {
+            return false;
+        }
+
+        try {
+            String expected = objectMapper.writeValueAsString(testCase.getExpectedOutput());
+            String actual = executionResult.getOutput().trim();
+
+            // Try parsing as JSON if possible
+            try {
+                Object expectedObj = objectMapper.readValue(expected, Object.class);
+                Object actualObj = objectMapper.readValue(actual, Object.class);
+                return expectedObj.equals(actualObj);
+            } catch (Exception e) {
+                // Fall back to string comparison
+                return normalizeOutput(expected).equals(normalizeOutput(actual));
+            }
+        } catch (JsonProcessingException e) {
+            return false;
+        }
     }
 
     private SubmissionResult createSubmissionResult(List<TestCaseResult> results) {
@@ -218,16 +260,6 @@ public class CodeExecutionService {
                 passedCount == totalCount ? "ACCEPTED" : "REJECTED";
     }
 
-    // Renamed to avoid duplicate method
-    private String normalizeExecutionOutput(String output) {
-        return output != null ? output.trim().replaceAll("\\r\\n", "\n") : "";
-    }
-
-    // Separate method for test case output normalization
-    private String normalizeTestCaseOutput(String output) {
-        return output != null ? output.trim().replaceAll("\\r\\n", "\n") : "";
-    }
-
     private String prepareCodeFile(Path workspace, String code, String language) throws IOException {
         String filename = getFilename(language);
         Path filePath = workspace.resolve(filename);
@@ -235,10 +267,26 @@ public class CodeExecutionService {
         return filePath.toString();
     }
 
-    private ProcessExecutionResult executeProcess(String command, String input, int timeoutSeconds) throws IOException, InterruptedException {
-        long startTime = System.currentTimeMillis();
+    private ProcessExecutionResult executeProcess(String command, Object input, int timeoutSeconds)
+            throws IOException, InterruptedException {
 
+        // Convert input to String
+        String stringInput = "";
+        if (input != null) {
+            if (input instanceof String) {
+                stringInput = (String) input;
+            } else {
+                try {
+                    stringInput = objectMapper.writeValueAsString(input);
+                } catch (JsonProcessingException e) {
+                    throw new IOException("Failed to serialize input", e);
+                }
+            }
+        }
+
+        long startTime = System.currentTimeMillis();
         ProcessBuilder processBuilder = new ProcessBuilder();
+
         if (System.getProperty("os.name").toLowerCase().contains("win")) {
             processBuilder.command("cmd.exe", "/c", command);
         } else {
@@ -248,14 +296,14 @@ public class CodeExecutionService {
         Process process = processBuilder.start();
 
         // Write input if provided
-        if (input != null && !input.isEmpty()) {
+        if (!stringInput.isEmpty()) {
             try (OutputStream outputStream = process.getOutputStream()) {
-                outputStream.write(input.getBytes());
+                outputStream.write(stringInput.getBytes());
                 outputStream.flush();
             }
         }
 
-        // Read output and error streams
+        // Rest of the method remains the same...
         StringBuilder output = new StringBuilder();
         StringBuilder error = new StringBuilder();
 
@@ -284,11 +332,17 @@ public class CodeExecutionService {
         outputThread.start();
         errorThread.start();
 
-        // Wait for process to complete with timeout
         boolean completed = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
         if (!completed) {
             process.destroyForcibly();
-            return new ProcessExecutionResult(true, -1, output.toString(), "Execution timed out after " + timeoutSeconds + " seconds");
+            return new ProcessExecutionResult(
+                    true,
+                    -1,
+                    output.toString(),
+                    "Execution timed out after " + timeoutSeconds + " seconds",
+                    System.currentTimeMillis() - startTime,
+                    0
+            );
         }
 
         outputThread.join(1000);
@@ -302,7 +356,6 @@ public class CodeExecutionService {
                 output.toString(),
                 error.toString(),
                 executionTime,
-                // TODO: Implement actual memory measurement
                 0
         );
     }

@@ -13,6 +13,7 @@ public class ProcessExecutionResult {
     private long executionTime;
     private long memoryUsage;
 
+    // Add this convenience constructor
     public ProcessExecutionResult(boolean timeout, int exitCode, String output, String error) {
         this(timeout, exitCode, output, error, 0, 0);
     }

@@ -2,40 +2,35 @@ package com.cs540.code_service.model;
 
 public class TestCaseResult {
 
-    private String input;
-    private String expectedOutput;
-    private String actualOutput;
+    private Object input;
+    private Object expectedOutput;
+    private Object actualOutput;  // 👈 Changed to Object
     private boolean passed;
+    private long executionTimeMs;
+    private String errorMessage;
 
-    public long getExecutionTimeMs() {
-        return executionTimeMs;
-    }
-
-    public void setExecutionTimeMs(long executionTimeMs) {
-        this.executionTimeMs = executionTimeMs;
-    }
-
-    public String getInput() {
+    // Getters and Setters
+    public Object getInput() {
         return input;
     }
 
-    public void setInput(String input) {
+    public void setInput(Object input) {
         this.input = input;
     }
 
-    public String getExpectedOutput() {
+    public Object getExpectedOutput() {
         return expectedOutput;
     }
 
-    public void setExpectedOutput(String expectedOutput) {
+    public void setExpectedOutput(Object expectedOutput) {
         this.expectedOutput = expectedOutput;
     }
 
-    public String getActualOutput() {
+    public Object getActualOutput() {
         return actualOutput;
     }
 
-    public void setActualOutput(String actualOutput) {
+    public void setActualOutput(Object actualOutput) {
         this.actualOutput = actualOutput;
     }
 
@@ -47,6 +42,14 @@ public class TestCaseResult {
         this.passed = passed;
     }
 
+    public long getExecutionTimeMs() {
+        return executionTimeMs;
+    }
+
+    public void setExecutionTimeMs(long executionTimeMs) {
+        this.executionTimeMs = executionTimeMs;
+    }
+
     public String getErrorMessage() {
         return errorMessage;
     }
@@ -54,9 +57,4 @@ public class TestCaseResult {
     public void setErrorMessage(String errorMessage) {
         this.errorMessage = errorMessage;
     }
-
-    private long executionTimeMs;
-    private String errorMessage;
-
-    // Getters and Setters
 }

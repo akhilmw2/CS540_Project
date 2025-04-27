@@ -9,10 +9,12 @@ public class TestCase {
     @Id
     private String id;
     private String problemId;
-    private String input;
-    private String expectedOutput;
+    private Object input;             // 👈 Changed from String to Object
+    private Object expectedOutput;    // 👈 Changed from String to Object
     private int timeoutSeconds;
     private boolean hidden;
+
+    // Getters and Setters
 
     public String getId() {
         return id;
@@ -30,19 +32,19 @@ public class TestCase {
         this.problemId = problemId;
     }
 
-    public String getInput() {
+    public Object getInput() {
         return input;
     }
 
-    public void setInput(String input) {
+    public void setInput(Object input) {
         this.input = input;
     }
 
-    public String getExpectedOutput() {
+    public Object getExpectedOutput() {
         return expectedOutput;
     }
 
-    public void setExpectedOutput(String expectedOutput) {
+    public void setExpectedOutput(Object expectedOutput) {
         this.expectedOutput = expectedOutput;
     }
 
@@ -61,5 +63,4 @@ public class TestCase {
     public void setHidden(boolean hidden) {
         this.hidden = hidden;
     }
-// Getters and Setters
 }
