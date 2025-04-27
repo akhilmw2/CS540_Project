@@ -4,6 +4,7 @@ import com.aiinterview.profile_service.dto.QuestionDetail;
 import com.aiinterview.profile_service.model.UserSubmission;
 import com.aiinterview.profile_service.repository.UserSubmissionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,6 +16,11 @@ import java.util.stream.Collectors;
 public class ProgressService {
 
     private final UserSubmissionRepository submissionRepository;
+
+    @Autowired // Explicit constructor injection
+    public ProgressService(UserSubmissionRepository submissionRepository) {
+        this.submissionRepository = submissionRepository;
+    }
 
     public Map<String, QuestionDetail> getProgress(String userId) {
         // Get all correct submissions
