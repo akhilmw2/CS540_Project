@@ -39,12 +39,19 @@ public class CodeExecutionService {
             result.setExpectedOutput(testCase.getExpectedOutput());
 
             try {
+                String inputAsString = String.valueOf(testCase.getInput());
+                String expectedOutputAsString = String.valueOf(testCase.getExpectedOutput());
+
                 long startTime = System.currentTimeMillis();
-                String output = DockerExecutor.runCode(language, code, testCase.getInput(), testCase.getTimeoutSeconds());
+                String output = DockerExecutor.runCode(language, code, inputAsString, testCase.getTimeoutSeconds());
                 long endTime = System.currentTimeMillis();
 
-                result.setActualOutput(output.trim());
-                boolean passed = output.trim().equals(testCase.getExpectedOutput().trim());
+                // 🔥 Now Parse User Output (String) back into Object
+                Object parsedActualOutput = parseOutput(output.trim());
+                result.setActualOutput(parsedActualOutput);
+
+                // 🔥 Compare based on Object equality
+                boolean passed = parsedActualOutput.equals(testCase.getExpectedOutput());
                 result.setPassed(passed);
                 result.setExecutionTimeMs(endTime - startTime);
 
@@ -70,5 +77,20 @@ public class CodeExecutionService {
         submission.setTimestamp(LocalDateTime.now());
 
         return submissionRepository.save(submission);
+    }
+
+    private Object parseOutput(String output) {
+        try {
+            // Try parsing as JSON (for arrays, objects, 2D arrays)
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            return mapper.readValue(output, Object.class);
+        } catch (Exception e) {
+            // If parsing fails, treat as simple String or Integer
+            try {
+                return Integer.parseInt(output);
+            } catch (NumberFormatException ex) {
+                return output; // fallback to plain String
+            }
+        }
     }
 }
