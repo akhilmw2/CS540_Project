@@ -20,7 +20,10 @@
 
 	<properties>
 		<java.version>22</java.version>
-		<maven.compiler.release>22</maven.compiler.release> <!-- Ensures Java 22 bytecode -->
+		<maven.compiler.release>22</maven.compiler.release>
+		<sonar.projectKey>question-service</sonar.projectKey>
+		<sonar.projectName>Question Service</sonar.projectName>
+		<sonar.host.url>http://localhost:9000</sonar.host.url><!-- Ensures Java 22 bytecode -->
 	</properties>
 
 	<dependencies>
@@ -85,6 +88,27 @@
 					<mainClass>com.example.QuestionServiceApplication</mainClass>
 				</configuration>
 			</plugin>
+
+			<plugin>
+				<groupId>org.sonarsource.scanner.maven</groupId>
+				<artifactId>sonar-maven-plugin</artifactId>
+				<version>3.10.0.2594</version> <!-- Latest version -->
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-checkstyle-plugin</artifactId>
+				<version>3.1.2</version>
+				<executions>
+					<execution>
+						<phase>validate</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
 		</plugins>
 	</build>
 

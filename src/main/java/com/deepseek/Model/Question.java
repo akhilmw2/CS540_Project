@@ -38,4 +38,7 @@ public class Question {
         this.hints = hints;
         this.solution = solution;
     }
+
+    public Question(String number, String q1, String content1, Object o, Object o1, Object o2, String arrays, String easy, Object o3, Object o4) {
+    }
 }
